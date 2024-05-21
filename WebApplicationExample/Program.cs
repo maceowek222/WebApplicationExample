@@ -12,7 +12,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddValidatorsFromAssemblyContaining(typeof(PersonValidator));
 
-var _ = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddDbContext<OsobaDb>(options =>
@@ -25,38 +24,56 @@ var app = builder.Build();
 // Definiowanie EndPoint'ów interfejsu API
 app.MapPost("/osoby", async (Osoba osoba, OsobaDb db, IValidator<Osoba> validator) =>
 {
-    // Walidacja danych przychodz¹cych
-    var validationResult = validator.Validate(osoba);
-    if (!validationResult.IsValid)
+    try
     {
-        // W przypadku b³êdnych danych zwracamy odpowiedŸ z b³êdami
-        return Results.BadRequest(validationResult.Errors);
-    }
+        // Walidacja danych przychodz¹cych
+        var validationResult = validator.Validate(osoba);
+        if (!validationResult.IsValid)
+        {
+            // W przypadku b³êdnych danych zwracamy odpowiedŸ z b³êdami
+            return Results.BadRequest(validationResult.Errors);
+        }
 
-    db.Osoby.Add(osoba);
-    await db.SaveChangesAsync();
-    return Results.Created($"/osoby/{osoba.Id}", osoba);
+        db.Osoby.Add(osoba);
+        await db.SaveChangesAsync();
+        return Results.Created($"/osoby/{osoba.Id}", osoba);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest("Nie wykonano rz¹dania");
+    }
 });
 
-app.MapGet("/osoby", async(OsobaDb db) =>
+app.MapGet("/osoby", async (OsobaDb db) =>
 {
-    var osoby = await db.Osoby.ToListAsync();
-    return Results.Ok(osoby);
+    try
+    {
+        var osoby = await db.Osoby.ToListAsync();
+        return Results.Ok(osoby);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest("Nie wykonano rz¹dania");
+    }
 });
 
-app.MapGet("/osoby{id:int}", async (int id, OsobaDb db) =>
+app.MapGet("/osoby/{id:int}", async (int id, OsobaDb db) =>
 {
-    if (id == null)
+    try
     {
-        return Results.BadRequest();
+        var osoba = await db.Osoby.FindAsync(id);
+        if (osoba == null)
+        {
+            return Results.NotFound();
+        }
+        return Results.Ok(osoba);
     }
-    var osoba = await db.Osoby.FindAsync(id);
-    if (osoba == null)
+    catch (Exception ex)
     {
-        return Results.NotFound();
+        return Results.BadRequest("Nie wykonano rz¹dania");
     }
-    return Results.Ok(osoba);
 });
+
 
 
 
